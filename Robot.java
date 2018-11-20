@@ -24,7 +24,9 @@ import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.buttons.Trigger;
-
+import edu.wpi.first.wpilibj.interfaces.Gyro;
+import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+import edu.wpi.first.wpilibj.Timer;
 
 
 /**
@@ -53,6 +55,11 @@ public class Robot extends IterativeRobot {
 	
 	protected int robotEnable;
 	protected int drive;
+	
+	protected Timer timer;
+	
+	protected Gyro gyro = new ADXRS450_Gyro();
+	protected String BotName = ("Gravitron");
 	
 	
 	
@@ -86,6 +93,10 @@ public class Robot extends IterativeRobot {
 		m_myRobot = new DifferentialDrive(m_left, m_right);
 		
 		dumperSpark.set(0);//stop the dumper motor
+		timer = new Timer();
+		//timer.start();
+		
+		gyro.reset();
 		
 		
 		c.setClosedLoopControl(true);//start the compressor
@@ -106,6 +117,9 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousInit() {
+		gyro.reset();
+		timer.start();									// start timer
+	timer.reset();
 		
 	}
 
@@ -114,10 +128,24 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousPeriodic() {
+		gyro.reset();
 		
-		//autonomous code here
+		
+		double angle = gyro.getAngle();
 		
 		
+			
+			
+	if (timer.get() < 5) {	
+			
+	m_myRobot.arcadeDrive(0.5, 0);
+				
+		}
+	else {
+		m_myRobot.arcadeDrive(0.6, 0);
+	}
+		
+	
 	}
 public void teleopInit() {
 	CameraServer.getInstance().startAutomaticCapture();//start the camera
@@ -128,6 +156,7 @@ public void teleopInit() {
 	 */
 	@Override
 	public void teleopPeriodic() {
+		
 		int robotEnable = (int)teamStatus.getSelected();
 		
 		if (robotEnable == 0) {
