@@ -6,6 +6,7 @@
 /*----------------------------------------------------------------------------*/
 
 package org.usfirst.frc.team7200.robot;
+//package edu.wpi.first.wpilibj.templates;
 
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -27,7 +28,10 @@ import edu.wpi.first.wpilibj.buttons.Trigger;
 import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.Timer;
-
+import edu.wpi.first.wpilibj.I2C;
+import edu.wpi.first.wpilibj.I2C.Port;
+import edu.wpi.first.wpilibj.SerialPort;
+//import edu.wpi.first.wpilibj.DigitalModule;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -61,6 +65,13 @@ public class Robot extends IterativeRobot {
 	protected Gyro gyro = new ADXRS450_Gyro();
 	protected String BotName = ("Gravitron");
 	
+	double kp =0.5;
+	
+	I2C i2c  = new I2C(I2C.Port.kOnboard, 0x1E);
+	byte[] toSend = new byte[1];
+	byte[] toGet = new byte [1];
+  
+    
 	
 	
 	/**
@@ -104,9 +115,6 @@ public class Robot extends IterativeRobot {
 		m_myRobot.arcadeDrive(0,0);//set drivetrain to 0 movement
 		
 	System.out.println("TEAM A IS AWESOME!!!!");
-	
-	
-	
 	//messing around because I can
 		/****************************************************************************************************/
 	
@@ -128,22 +136,22 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousPeriodic() {
+		
 		gyro.reset();
+		
 		
 		
 		double angle = gyro.getAngle();
 		
+		System.out.println(angle);
+		
 		
 			
 			
-	if (timer.get() < 5) {	
+	
 			
-	m_myRobot.arcadeDrive(0.5, 0);
-				
-		}
-	else {
-		m_myRobot.arcadeDrive(0.6, 0);
-	}
+	m_myRobot.arcadeDrive(0.5, -angle*kp);
+	
 		
 	
 	}
@@ -158,6 +166,7 @@ public void teleopInit() {
 	public void teleopPeriodic() {
 		
 		int robotEnable = (int)teamStatus.getSelected();
+		boolean sendymabob = driverstick.getRawButton(11);
 		
 		if (robotEnable == 0) {
 			drive = 0;
@@ -173,16 +182,25 @@ public void teleopInit() {
 		boolean punch1 = driverstick.getRawButton(4);//these two lines read button 2 and 4 and assign them to punch 1 and punch
 		//for pressing the button
 		
-		double forward = (driverstick.getY()*-1*drive);
-		double turn = (driverstick.getX()*drive); //reading the joystick values
+		double forward = (driverstick.getY()*-1);
+		double turn = (driverstick.getX()); //reading the joystick values
 		
 		shootSolenoid.set(false);//piston inlet closed
 		retractSolenoid.set(true);//piston outlet closed
 		
 		dumperSpark.set(0);// turn off the chute motor
 		
-		m_myRobot.arcadeDrive(forward*0.6,turn*0.55);// drive the bot
-		
+		m_myRobot.arcadeDrive(forward*0.7,turn*0.7);// drive the bot
+		if (sendymabob == true) {
+			
+			i2c.transaction(toSend, 1, toGet, 0);
+			toSend[0] = 1;
+			
+			}
+			else {
+				i2c.transaction(toSend, 1, toGet, 0);
+				toSend[0] = 0;
+			}
 		
 		
 		
@@ -190,7 +208,19 @@ public void teleopInit() {
 		{
 			shootSolenoid.set(true); //open the inlet valve
 			retractSolenoid.set(false); //outlet closed
-			m_myRobot.arcadeDrive(forward*0.6,turn*0.55); //drive the bot
+			
+			m_myRobot.arcadeDrive(forward*0.7,turn*0.7); //drive the bot
+			
+			if (sendymabob == true) {
+				
+				i2c.transaction(toSend, 1, toGet, 0);
+				toSend[0] = 1;
+				
+				}
+				else {
+					i2c.transaction(toSend, 1, toGet, 0);
+					toSend[0] = 0;
+				}
 			
 		}
 		
@@ -198,14 +228,44 @@ public void teleopInit() {
 		{
 			if (driverstick.getPOV() == 0) {//read the hat switch (it measures in degrees)
 				(dumperSpark).set(0.2);//set dupmer motor to 0.4 forward
-				m_myRobot.arcadeDrive(forward*0.6,turn*0.55); //drive the bot
+				m_myRobot.arcadeDrive(forward*0.7,turn*0.7); //drive the bot
+				
+				if (sendymabob == true) {
+				
+				i2c.transaction(toSend, 1, toGet, 0);
+				toSend[1] = 1;
+				
+				}
+				else {
+					i2c.transaction(toSend, 1, toGet, 0);
+					toSend[1] = 1;
+				}
 			}
 			if (driverstick.getPOV() == 180) {//read hat switch
 				dumperSpark.set(-0.2);//set dumper motor to reverse
-				m_myRobot.arcadeDrive(forward*0.6,turn*0.55); //drive the bot
+				m_myRobot.arcadeDrive(forward*0.7,turn*0.7); //drive the bot
+				
+				if (sendymabob == true) {
+				
+				i2c.transaction(toSend, 1, toGet, 0);
+				toSend[0] = 1;
+				
+				}
+				else {
+					i2c.transaction(toSend, 1, toGet, 0);
+					toSend[0] = 0;
+				}
 			}
 		}
-		
+		// time to mess with some bits and bytes!!!!!
+			
+			
+			if (sendymabob == true) {
+			
+			i2c.transaction(toSend, 1, toGet, 0);
+			toSend[0] = 1;
+			
+			}
 		
 	}
 
