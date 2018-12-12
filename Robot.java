@@ -31,6 +31,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.I2C.Port;
 import edu.wpi.first.wpilibj.SerialPort;
+import edu.wpi.first.wpilibj.Servo;
 //import edu.wpi.first.wpilibj.DigitalModule;
 
 /**
@@ -51,9 +52,12 @@ public class Robot extends IterativeRobot {
 	protected DifferentialDrive m_myRobot;
 	protected Joystick driverstick = new Joystick(0);
 	
+	//pneumatics control
 	protected Compressor c = new Compressor(0);
 	Solenoid shootSolenoid = new Solenoid(1);
 	Solenoid retractSolenoid = new Solenoid(2);
+	Solenoid Deploy = new Solenoid(0);
+	Solenoid unDeploy = new Solenoid(3);
 	
 	Spark dumperSpark = new Spark(4);
 	
@@ -63,14 +67,19 @@ public class Robot extends IterativeRobot {
 	protected Timer timer;
 	
 	protected Gyro gyro = new ADXRS450_Gyro();
-	protected String BotName = ("Gravitron");
+	//protected String BotName = ("Gravitron");
 	
 	double kp =0.5;
 	
-	I2C i2c  = new I2C(I2C.Port.kOnboard, 0x1E);
-	byte[] toSend = new byte[1];
-	byte[] toGet = new byte [1];
-  
+	double stickReverse;
+	
+	Servo dumpServo = new Servo(6);
+	double servoAngle;
+
+	
+	private static I2C Wire = new I2C (Port.kOnboard,1);
+	//byte[] bytes = new byte[1];
+	
     
 	
 	
@@ -115,6 +124,8 @@ public class Robot extends IterativeRobot {
 		m_myRobot.arcadeDrive(0,0);//set drivetrain to 0 movement
 		
 	System.out.println("TEAM A IS AWESOME!!!!");
+	
+	
 	//messing around because I can
 		/****************************************************************************************************/
 	
@@ -143,7 +154,7 @@ public class Robot extends IterativeRobot {
 		
 		double angle = gyro.getAngle();
 		
-		System.out.println(angle);
+		//System.out.println(angle);
 		
 		
 			
@@ -164,9 +175,14 @@ public void teleopInit() {
 	 */
 	@Override
 	public void teleopPeriodic() {
+		double forward = (driverstick.getY()*-1);
+		double turn = (driverstick.getX()); //reading the joystick values
 		
 		int robotEnable = (int)teamStatus.getSelected();
-		boolean sendymabob = driverstick.getRawButton(11);
+		boolean sendymabob = driverstick.getRawButton(12);
+		
+		Deploy.set(false);
+		unDeploy.set(true);
 		
 		if (robotEnable == 0) {
 			drive = 0;
@@ -175,100 +191,78 @@ public void teleopInit() {
 			drive = 1;
 			
 		}
+		while (driverstick.getPOV() != -1) {
+			
+			
+		if (driverstick.getPOV() == 90);{
+			dumpServo.setAngle(70);
+			m_myRobot.arcadeDrive((driverstick.getY()*-1)*0.7*stickReverse,(driverstick.getX())*0.7*stickReverse);
+			
+		}
 		
+		if (driverstick.getPOV() == 180) {
 		
+			dumpServo.setAngle(168);
+			m_myRobot.arcadeDrive((driverstick.getY()*-1)*0.7*stickReverse,(driverstick.getX())*0.7*stickReverse);
+			
+		}
+		}
+
+		if (driverstick.getRawButton(12)) {
+		 stickReverse = -0.5;
+			m_myRobot.arcadeDrive((driverstick.getY()*-1)*0.7*stickReverse,(driverstick.getX())*0.7*stickReverse);
+			
+		}
+		if (driverstick.getRawButton(10)) {
+			stickReverse = 1;
+			m_myRobot.arcadeDrive((driverstick.getY()*-1)*0.7*stickReverse,(driverstick.getX())*0.7*stickReverse);
+			
+		}
 		
 		boolean punch = driverstick.getRawButton(2);
-		boolean punch1 = driverstick.getRawButton(4);//these two lines read button 2 and 4 and assign them to punch 1 and punch
+		boolean punch1 = driverstick.getRawButton(4);
+		boolean deploy = driverstick.getTrigger();//these two lines read button 2 and 4 and assign them to punch 1 and punch
 		//for pressing the button
+		if(deploy == true) {
+			Deploy.set(true);
+			unDeploy.set(false);
+		}
 		
-		double forward = (driverstick.getY()*-1);
-		double turn = (driverstick.getX()); //reading the joystick values
 		
 		shootSolenoid.set(false);//piston inlet closed
 		retractSolenoid.set(true);//piston outlet closed
 		
-		dumperSpark.set(0);// turn off the chute motor
+		dumpServo.setAngle(168);// turn off the chute motor
 		
-		m_myRobot.arcadeDrive(forward*0.7,turn*0.7);// drive the bot
+		m_myRobot.arcadeDrive(forward*0.7*stickReverse,turn*0.7*stickReverse);// drive the bot
+		
+		System.out.println(servoAngle);
+		
+		
+		/*************************************************************************/
+		
 		if (sendymabob == true) {
-			
-			i2c.transaction(toSend, 1, toGet, 0);
-			toSend[0] = 1;
+			Wire.write(1, 1);
 			
 			}
-			else {
-				i2c.transaction(toSend, 1, toGet, 0);
-				toSend[0] = 0;
-			}
+			
 		
-		
+		/*************************************************************************/
 		
 		if((punch || punch1) == true)// if button 2 or 4 are pressed, THE FIST deploys
 		{
 			shootSolenoid.set(true); //open the inlet valve
 			retractSolenoid.set(false); //outlet closed
 			
-			m_myRobot.arcadeDrive(forward*0.7,turn*0.7); //drive the bot
+			m_myRobot.arcadeDrive(forward*0.7*stickReverse,turn*0.7*stickReverse); //drive the bot
 			
 			if (sendymabob == true) {
 				
-				i2c.transaction(toSend, 1, toGet, 0);
-				toSend[0] = 1;
+				Wire.write(1, 1);
 				
-				}
-				else {
-					i2c.transaction(toSend, 1, toGet, 0);
-					toSend[0] = 0;
-				}
-			
+		   }
 		}
-		
-		 if (driverstick.getPOV() != (-1))
-		{
-			if (driverstick.getPOV() == 0) {//read the hat switch (it measures in degrees)
-				(dumperSpark).set(0.2);//set dupmer motor to 0.4 forward
-				m_myRobot.arcadeDrive(forward*0.7,turn*0.7); //drive the bot
-				
-				if (sendymabob == true) {
-				
-				i2c.transaction(toSend, 1, toGet, 0);
-				toSend[1] = 1;
-				
-				}
-				else {
-					i2c.transaction(toSend, 1, toGet, 0);
-					toSend[1] = 1;
-				}
-			}
-			if (driverstick.getPOV() == 180) {//read hat switch
-				dumperSpark.set(-0.2);//set dumper motor to reverse
-				m_myRobot.arcadeDrive(forward*0.7,turn*0.7); //drive the bot
-				
-				if (sendymabob == true) {
-				
-				i2c.transaction(toSend, 1, toGet, 0);
-				toSend[0] = 1;
-				
-				}
-				else {
-					i2c.transaction(toSend, 1, toGet, 0);
-					toSend[0] = 0;
-				}
-			}
-		}
-		// time to mess with some bits and bytes!!!!!
-			
-			
-			if (sendymabob == true) {
-			
-			i2c.transaction(toSend, 1, toGet, 0);
-			toSend[0] = 1;
-			
-			}
-		
-	}
-
+   	}
 	/**
 	 * This function is called periodically during test mode.
 	 */
