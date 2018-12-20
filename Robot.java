@@ -78,9 +78,13 @@ public class Robot extends IterativeRobot {
 
 	private static I2C Wire = new I2C(Port.kOnboard, 1);// slave I2C device address 1 (rio is master)
 
-	Ultrasonic sensor = new Ultrasonic(0, 1);// ping, then echo
+	Ultrasonic sensor = new Ultrasonic(4,5);// ping, then echo
+	Ultrasonic sensor1 = new Ultrasonic(2, 3);
 	int servAng = 30;
 	int currentAng;
+	boolean turnYa = false;
+	boolean turnStop = false;
+	int driving = 1;
 
 	@Override
 	public void robotInit() {
@@ -111,7 +115,7 @@ public class Robot extends IterativeRobot {
 															// another set of wheels
 
 		dumperSpark.set(0);// stop the dumper motor
-		talon.set(ControlMode.PercentOutput,0);
+		talon.set(ControlMode.PercentOutput, 0);
 		timer = new Timer();
 		// timer.start();
 
@@ -123,6 +127,7 @@ public class Robot extends IterativeRobot {
 
 		// System.out.println("TEAM A IS AWESOME!!!!");
 		sensor.setAutomaticMode(true);
+		sensor1.setAutomaticMode(true);
 
 		// messing around because I can
 		/****************************************************************************************************/
@@ -158,25 +163,39 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void autonomousPeriodic() {
 
+		timer.start();
 		gyro.reset();
-		m_myRobot.arcadeDrive(0, 0);
-		System.out.println(sensor.getRangeMM());
 		double angle = gyro.getAngle();
 
-		sensServo.set(servAng);
+		m_myRobot.arcadeDrive(0.5* driving, -angle*kp*driving);
+		
+		System.out.println(sensor.getRangeMM());
+		
+		
+		if (sensor1.getRangeMM() < 700) {
+			turnYa = true;
+		}
 
-		/*
-		 * while (sensor.getRangeMM() > 200) { m_myRobot.arcadeDrive(0.5, -angle * kp);
-		 * } while (sensor.getRangeMM() <= 200) { m_myRobot.arcadeDrive(0, 0); }
-		 * 
-		 * 
-		 * 
-		 * gyro.reset();
-		 * 
-		 * 
-		 * 
-		 * m_myRobot.arcadeDrive(0.5, -angle * kp);
-		 */
+		if (sensor.getRangeMM() < 700) {
+			turnStop = true;
+		}
+
+		if (turnYa == true && turnStop == false) {
+			m_myRobot.arcadeDrive(0, -0.5);
+		}
+		if (turnYa == true && turnStop == true && sensor.getRangeMM() > 100) {
+			m_myRobot.arcadeDrive(-0.5*driving, -angle*kp*driving);
+		}
+
+		if (turnYa == true && turnStop == true && sensor.getRangeMM() <= 100) {
+			driving = 0;
+			m_myRobot.arcadeDrive(0, 0);
+		}
+
+		gyro.reset();
+
+		
+
 	}
 
 	public void teleopInit() {
@@ -196,7 +215,7 @@ public class Robot extends IterativeRobot {
 		boolean punch1 = driverstick.getRawButton(4);
 		boolean deploy = driverstick.getTrigger();
 		boolean suction = driverstick.getRawButton(3);
-		talon.set(ControlMode.PercentOutput,0);
+		talon.set(ControlMode.PercentOutput, 0);
 
 		Deploy.set(false);// sets pistons to default position(retract)
 		unDeploy.set(true);
@@ -248,25 +267,25 @@ public class Robot extends IterativeRobot {
 		}
 		if (driverstick.getRawButton(5) == true) {
 
-			talon.set(ControlMode.PercentOutput,1);
+			talon.set(ControlMode.PercentOutput, 1);
 
 			m_myRobot.arcadeDrive((driverstick.getY() * -1) * 0.7 * stickReverse, (driverstick.getX()) * 0.7);
 		}
 
 		if (driverstick.getRawButton(6) == true) {
 
-			talon.set(ControlMode.PercentOutput,-1);
+			talon.set(ControlMode.PercentOutput, -1);
 
 			m_myRobot.arcadeDrive((driverstick.getY() * -1) * 0.7 * stickReverse, (driverstick.getX()) * 0.7);
 		}
-		
+
 		if (suction == true) {
 			dumperSpark.set(0.9);
-			
+
 			m_myRobot.arcadeDrive((driverstick.getY() * -1) * 0.7 * stickReverse, (driverstick.getX()) * 0.7);
-			
+
 		}
-		
+
 		shootSolenoid.set(false);// piston inlet closed
 		retractSolenoid.set(true);// piston outlet closed
 
